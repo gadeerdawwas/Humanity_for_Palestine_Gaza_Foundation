@@ -6,6 +6,8 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate,
+  useLocation,
 } from 'react-router-dom';
 
 import { LanguageProvider } from '@/context/LanguageContext';
@@ -21,9 +23,7 @@ import { AdminDashboardPage } from '@/pages/AdminDashboardPage';
 
 import { AdminProjectsPage } from '@/pages/admin/AdminProjectsPage';
 import { AdminProjectDetailPage } from '@/pages/admin/AdminProjectDetailPage';
-
 import { AdminInitiativesPage } from '@/pages/admin/AdminInitiativesPage';
-
 import { AdminGalleryPage } from '@/pages/admin/AdminGalleryPage';
 import { AdminServicesPage } from '@/pages/admin/AdminServicesPage';
 import { AdminMessagesPage } from '@/pages/admin/AdminMessagesPage';
@@ -31,6 +31,15 @@ import { AdminSubscribersPage } from '@/pages/admin/AdminSubscribersPage';
 import { AdminSettingsPage } from '@/pages/admin/AdminSettingsPage';
 import { AdminPartnersPage } from '@/pages/admin/AdminPartnersPage';
 import { AdminImpactStatsPage } from '@/pages/admin/AdminImpactStatsPage';
+
+import {
+  type ReactNode,
+  useState,
+} from 'react';
+
+/* =========================
+   SITE BRANDING
+========================= */
 
 function SiteBranding() {
   useEffect(() => {
@@ -70,10 +79,8 @@ function SiteBranding() {
         values.organization_name_en?.trim() ||
         'Humanity for Palestine – Gaza';
 
-      /* PAGE TITLE */
       document.title = siteName;
 
-      /* FAVICON */
       if (logoUrl) {
         document
           .querySelectorAll(
@@ -87,7 +94,6 @@ function SiteBranding() {
           document.createElement('link');
 
         favicon.rel = 'icon';
-
         favicon.href =
           `${logoUrl}?v=${Date.now()}`;
 
@@ -95,7 +101,6 @@ function SiteBranding() {
           favicon
         );
 
-        /* APPLE ICON */
         document
           .querySelectorAll(
             "link[rel='apple-touch-icon']"
@@ -125,12 +130,98 @@ function SiteBranding() {
   return null;
 }
 
+/* =========================
+   PROTECTED ADMIN ROUTE
+========================= */
+
+function ProtectedRoute({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const location = useLocation();
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [authenticated, setAuthenticated] =
+    useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      setAuthenticated(!!session);
+      setLoading(false);
+    };
+
+    checkSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (!mounted) return;
+
+        setAuthenticated(!!session);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#F6F7F4',
+          color: '#073B2A',
+          fontWeight: 600,
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <Navigate
+        to="/admin/login"
+        replace
+        state={{
+          from: location.pathname,
+        }}
+      />
+    );
+  }
+
+  return <>{children}</>;
+}
+
+/* =========================
+   APP
+========================= */
+
 export default function App() {
   return (
     <LanguageProvider>
       <BrowserRouter>
 
-        {/* يعمل على الموقع ولوحة التحكم */}
         <SiteBranding />
 
         <Routes>
@@ -149,99 +240,119 @@ export default function App() {
 
           <Route
             path="/projects/:id"
-            element={
-              <ProjectDetailPage />
-            }
+            element={<ProjectDetailPage />}
           />
 
           <Route
             path="/initiatives/:id"
-            element={
-              <InitiativeDetailPage />
-            }
+            element={<InitiativeDetailPage />}
           />
 
-          {/* ADMIN */}
+          {/* ADMIN LOGIN - PUBLIC */}
 
           <Route
             path="/admin/login"
             element={<AdminLoginPage />}
           />
 
+          {/* PROTECTED ADMIN */}
+
           <Route
             path="/admin"
             element={
-              <AdminDashboardPage />
+              <ProtectedRoute>
+                <AdminDashboardPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/projects"
             element={
-              <AdminProjectsPage />
+              <ProtectedRoute>
+                <AdminProjectsPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/projects/:id"
             element={
-              <AdminProjectDetailPage />
+              <ProtectedRoute>
+                <AdminProjectDetailPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/initiatives"
             element={
-              <AdminInitiativesPage />
+              <ProtectedRoute>
+                <AdminInitiativesPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/gallery"
             element={
-              <AdminGalleryPage />
+              <ProtectedRoute>
+                <AdminGalleryPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/services"
             element={
-              <AdminServicesPage />
+              <ProtectedRoute>
+                <AdminServicesPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/messages"
             element={
-              <AdminMessagesPage />
+              <ProtectedRoute>
+                <AdminMessagesPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/subscribers"
             element={
-              <AdminSubscribersPage />
+              <ProtectedRoute>
+                <AdminSubscribersPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/impact"
             element={
-              <AdminImpactStatsPage />
+              <ProtectedRoute>
+                <AdminImpactStatsPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/partners"
             element={
-              <AdminPartnersPage />
+              <ProtectedRoute>
+                <AdminPartnersPage />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/admin/settings"
             element={
-              <AdminSettingsPage />
+              <ProtectedRoute>
+                <AdminSettingsPage />
+              </ProtectedRoute>
             }
           />
 
